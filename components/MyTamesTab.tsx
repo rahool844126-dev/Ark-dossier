@@ -3,15 +3,26 @@ import React, { useState, useEffect } from 'react';
 import { TamedCreature } from '../types';
 import { getTames, addTame, updateTame, removeTame } from '../services/tameStore';
 import { CREATURES } from '../constants';
-import CreatureCard from './CreatureCard';
 
 const MyTamesTab: React.FC = () => {
     const [tames, setTames] = useState<TamedCreature[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTame, setEditingTame] = useState<TamedCreature | null>(null);
 
     useEffect(() => {
-        setTames(getTames());
+        const loadTames = async () => {
+            setIsLoading(true);
+            try {
+                const storedTames = await getTames();
+                setTames(storedTames);
+            } catch (error) {
+                console.error("Could not load tames", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadTames();
     }, []);
 
     const handleOpenModal = (tame: TamedCreature | null = null) => {
@@ -24,32 +35,47 @@ const MyTamesTab: React.FC = () => {
         setEditingTame(null);
     };
 
-    const handleSave = (tameToSave: TamedCreature) => {
-        if (editingTame) {
-            setTames(updateTame(tameToSave));
+    const handleSave = async (tameToSave: Omit<TamedCreature, 'id'> & { id?: string }) => {
+        if (editingTame && tameToSave.id) {
+            const updated = await updateTame(tameToSave as TamedCreature);
+            setTames(prevTames => prevTames.map(t => t.id === updated.id ? updated : t));
         } else {
-            const newTame = addTame(tameToSave);
+            const newTame = await addTame(tameToSave);
             setTames(prev => [...prev, newTame]);
         }
         handleCloseModal();
     };
 
-    const handleDelete = (tameId: string) => {
-        if(window.confirm("Are you sure you want to delete this tame?")) {
-            setTames(removeTame(tameId));
+    const handleDelete = async (tameId: string, nickname: string) => {
+        const confirmationText = "DELETE";
+        const userInput = window.prompt(`To permanently delete "${nickname}", please type "${confirmationText}" below.`);
+
+        if (userInput === confirmationText) {
+            try {
+                await removeTame(tameId);
+                setTames(prevTames => prevTames.filter(t => t.id !== tameId));
+            } catch (error) {
+                console.error("Failed to delete tame:", error);
+                alert("There was an error deleting the tame. Please try again.");
+            }
+        } else if (userInput !== null) { // User typed something, but it was incorrect
+            alert("Incorrect confirmation text. Deletion cancelled.");
         }
+        // If userInput is null, the user clicked "Cancel", so we do nothing.
     };
     
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <h2 className="text-xl font-orbitron font-bold text-text-primary uppercase">My Tames</h2>
-                <button onClick={() => handleOpenModal()} className="bg-[var(--accent-ultimate)] text-bg-primary font-bold py-2 px-4 rounded-lg text-sm hover:opacity-80 transition-opacity">
+                <button onClick={() => handleOpenModal()} className="bg-[var(--accent-main)] text-bg-primary font-bold py-2 px-4 rounded-lg text-sm hover:opacity-80 transition-opacity">
                     Add Tame
                 </button>
             </div>
             
-            {tames.length === 0 ? (
+            {isLoading ? (
+                 <div className="text-center text-text-secondary py-16">Loading your tames...</div>
+            ) : tames.length === 0 ? (
                 <div className="text-center text-text-secondary py-16">
                     <p>No tames added yet.</p>
                     <p>Click "Add Tame" to start your collection!</p>
@@ -68,7 +94,7 @@ const MyTamesTab: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                      <button onClick={() => handleOpenModal(tame)} className="p-2 text-text-secondary hover:text-text-primary transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg></button>
-                                    <button onClick={() => handleDelete(tame.id)} className="p-2 text-text-secondary hover:text-[var(--accent-negative)] transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
+                                    <button onClick={() => handleDelete(tame.id, tame.nickname)} className="p-2 text-text-secondary hover:text-[var(--accent-negative)] transition-colors"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg></button>
                                 </div>
                             </div>
                         )
@@ -81,7 +107,7 @@ const MyTamesTab: React.FC = () => {
     );
 };
 
-const TameFormModal: React.FC<{tame: TamedCreature | null, onSave: (tame: TamedCreature) => void, onClose: () => void}> = ({tame, onSave, onClose}) => {
+const TameFormModal: React.FC<{tame: TamedCreature | null, onSave: (tame: Omit<TamedCreature, 'id'> & { id?: string }) => Promise<void>, onClose: () => void}> = ({tame, onSave, onClose}) => {
     const [formData, setFormData] = useState<any>(tame || { gender: 'Unknown', baseStats: {} });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -94,9 +120,9 @@ const TameFormModal: React.FC<{tame: TamedCreature | null, onSave: (tame: TamedC
         }
     };
     
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        await onSave(formData);
     };
 
     return (
@@ -125,7 +151,7 @@ const TameFormModal: React.FC<{tame: TamedCreature | null, onSave: (tame: TamedC
                     </div>
                     <div className="flex justify-end gap-3 pt-2">
                         <button type="button" onClick={onClose} className="bg-bg-tertiary text-text-primary px-4 py-2 rounded-lg text-sm">Cancel</button>
-                        <button type="submit" className="bg-[var(--accent-ultimate)] text-bg-primary px-4 py-2 rounded-lg text-sm">Save</button>
+                        <button type="submit" className="bg-[var(--accent-main)] text-bg-primary px-4 py-2 rounded-lg text-sm">Save</button>
                     </div>
                 </form>
             </div>

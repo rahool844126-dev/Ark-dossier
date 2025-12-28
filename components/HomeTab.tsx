@@ -5,7 +5,7 @@ import { Creature } from '../types';
 import { getCustomCreatureImage } from '../services/imageStore';
 
 interface HomeTabProps {
-  onNavigate: (tab: 'creatures' | 'recipes' | 'breeding' | 'myTames' | 'assistant') => void;
+  onNavigate: (tab: 'creatures' | 'recipes' | 'breeding' | 'myTames') => void;
   onSelectCreature: (creature: Creature) => void;
 }
 
@@ -19,8 +19,15 @@ const HomeTab: React.FC<HomeTabProps> = ({ onNavigate, onSelectCreature }) => {
     const [imageUrl, setImageUrl] = useState(creatureOfTheDay.image);
 
     useEffect(() => {
-        const customImage = getCustomCreatureImage(creatureOfTheDay.id);
-        setImageUrl(customImage || creatureOfTheDay.image);
+        let isMounted = true;
+        const fetchImage = async () => {
+            const customImage = await getCustomCreatureImage(creatureOfTheDay.id);
+            if (isMounted) {
+                setImageUrl(customImage || creatureOfTheDay.image);
+            }
+        };
+        fetchImage();
+        return () => { isMounted = false; };
     }, [creatureOfTheDay.id, creatureOfTheDay.image]);
     
     const navItems = [
@@ -43,10 +50,10 @@ const HomeTab: React.FC<HomeTabProps> = ({ onNavigate, onSelectCreature }) => {
             tab: 'breeding' as const
         },
         {
-            title: 'HLNA Assistant',
-            description: 'Ask the AI for survival tips',
-            icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 017 8a1 1 0 10-2 0 7.001 7.001 0 006 6.93V17H9a1 1 0 100 2h2a1 1 0 100-2h-1v-2.07z" clipRule="evenodd" /></svg>,
-            tab: 'assistant' as const
+            title: 'My Tames',
+            description: 'Manage your creature collection',
+            icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zm-1.559 1.832a4.002 4.002 0 00-2.882 0C2.969 8.523 2 9.873 2 11.5V13a1 1 0 001 1h8a1 1 0 001-1v-1.5c0-1.627-.969-2.977-2.559-3.668zM18 6a3 3 0 11-6 0 3 3 0 016 0zM12.441 7.832a4.002 4.002 0 012.882 0C17.03 8.523 18 9.873 18 11.5V13a1 1 0 001 1h.5a1 1 0 001-1v-1.5c0-1.627-.969-2.977-2.559-3.668z" /></svg>,
+            tab: 'myTames' as const
         }
     ];
 
@@ -55,7 +62,6 @@ const HomeTab: React.FC<HomeTabProps> = ({ onNavigate, onSelectCreature }) => {
             <div>
                 <h2 className="font-orbitron font-bold text-[var(--accent-main)] mb-2 uppercase tracking-wide">Creature of the Day</h2>
                 <div 
-                    key={imageUrl}
                     className="group relative h-40 bg-cover bg-center flex flex-col justify-end text-white overflow-hidden cursor-pointer duration-300 ease-out rounded-lg image-fade-in"
                     style={{ backgroundImage: `url(${imageUrl})` }}
                     onClick={() => onSelectCreature(creatureOfTheDay)}

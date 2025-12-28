@@ -1,5 +1,5 @@
 
-// FIX: Add missing ArkEdition enum
+// Defines the game edition, mobile or ultimate.
 export enum ArkEdition {
   ULTIMATE = 'ultimate',
   MOBILE = 'mobile',

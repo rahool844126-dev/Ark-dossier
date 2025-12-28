@@ -12,9 +12,16 @@ const CreatureCard: React.FC<CreatureCardProps> = ({ creature, onClick }) => {
   const [imageUrl, setImageUrl] = useState(creature.image);
 
   useEffect(() => {
-    const customImage = getCustomCreatureImage(creature.id);
-    setImageUrl(customImage || creature.image);
-  }, [creature.id, creature.image]);
+    let isMounted = true;
+    const fetchImage = async () => {
+      const customImage = await getCustomCreatureImage(creature.id);
+      if (isMounted && customImage) {
+        setImageUrl(customImage);
+      }
+    };
+    fetchImage();
+    return () => { isMounted = false; };
+  }, [creature.id]);
 
   const temperamentStyles: { [key in Creature['temperament']]: { border: string; text: string; bg: string } } = {
     'Aggressive': { border: 'border-red-500/80', text: 'text-red-400', bg: 'bg-red-900/20' },
@@ -29,7 +36,6 @@ const CreatureCard: React.FC<CreatureCardProps> = ({ creature, onClick }) => {
   return (
     <div
       onClick={onClick}
-      key={imageUrl}
       className="group relative h-40 bg-cover bg-center flex flex-col justify-end text-white overflow-hidden cursor-pointer duration-300 ease-out image-fade-in rounded-lg"
       style={{ 
         backgroundImage: `url(${imageUrl})`,

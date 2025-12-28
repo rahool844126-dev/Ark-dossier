@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Creature, Recipe } from '../types';
 import { RECIPES } from '../constants';
 import { getCustomCreatureImage, saveCustomCreatureImage, removeCustomCreatureImage } from '../services/imageStore';
@@ -8,6 +8,7 @@ import BreedingCalculator from './BreedingCalculator';
 interface CreatureDetailPageProps {
   creature: Creature;
   onBack: () => void;
+  allowImageEditing: boolean;
 }
 
 const StatPanel: React.FC<{ stat: string; value: string | number; icon: React.ReactNode; color: string; }> = ({ stat, value, icon, color }) => (
@@ -131,9 +132,9 @@ const TamingCalculator: React.FC<{ creature: Creature }> = ({ creature }) => {
 };
 
 
-const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBack }) => {
+const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBack, allowImageEditing }) => {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [displayedImage, setDisplayedImage] = useState(() => getCustomCreatureImage(creature.id) || creature.image);
+  const [displayedImage, setDisplayedImage] = useState(creature.image);
   const [analyzerInput, setAnalyzerInput] = useState<StatInput>({ level: '', health: '', stamina: '', oxygen: '', food: '', weight: '', melee: '', speed: '' });
   const [analyzedPoints, setAnalyzedPoints] = useState<AnalyzedPoints | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>('dossier');
@@ -141,6 +142,18 @@ const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBac
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recipeNames = useMemo(() => new Set(RECIPES.map(r => r.name)), []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchImage = async () => {
+      const customImage = await getCustomCreatureImage(creature.id);
+      if (isMounted && customImage) {
+        setDisplayedImage(customImage);
+      }
+    };
+    fetchImage();
+    return () => { isMounted = false; };
+  }, [creature.id]);
   
   const handleCopyCoords = (lat: number, lon: number) => {
     const coordsString = `${lat.toFixed(1)}, ${lon.toFixed(1)}`;
@@ -186,22 +199,22 @@ const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBac
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const base64Image = e.target?.result as string;
       if (base64Image) {
-        saveCustomCreatureImage(creature.id, base64Image);
+        await saveCustomCreatureImage(creature.id, base64Image);
         setDisplayedImage(base64Image);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleResetImage = () => {
+  const handleResetImage = async () => {
     const confirmationText = "REMOVE";
     const userInput = window.prompt(`To confirm removal, please type "${confirmationText}" below.`);
 
     if (userInput === confirmationText) {
-      removeCustomCreatureImage(creature.id);
+      await removeCustomCreatureImage(creature.id);
       setDisplayedImage(creature.image);
     } else if (userInput !== null) { // User typed something, but it was incorrect
       alert("Incorrect confirmation text. Image was not removed.");
@@ -248,7 +261,6 @@ const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBac
     >
       <main className="flex-1 overflow-y-auto no-scrollbar relative z-10">
         <div
-          key={displayedImage}
           className="h-64 bg-cover bg-center relative group image-fade-in"
           style={{ backgroundImage: `url(${displayedImage})` }}
         >
@@ -256,16 +268,20 @@ const CreatureDetailPage: React.FC<CreatureDetailPageProps> = ({ creature, onBac
           <button onClick={onBack} className="absolute top-4 left-4 p-2 rounded-full bg-black/40 text-text-primary hover:bg-black/70 backdrop-blur-sm transition-colors" aria-label="Go back">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
-          <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full bg-black/40 text-text-primary hover:bg-black/70 backdrop-blur-sm" aria-label="Change image">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-              </button>
-              {(displayedImage !== creature.image) && (
-                <button onClick={handleResetImage} className="p-2 rounded-full bg-black/40 text-text-primary hover:bg-black/70 backdrop-blur-sm" aria-label="Reset image">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+          
+          {allowImageEditing && (
+            <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full bg-black/40 text-text-primary hover:bg-black/70 backdrop-blur-sm" aria-label="Change image">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
                 </button>
-              )}
-          </div>
+                {(displayedImage !== creature.image) && (
+                  <button onClick={handleResetImage} className="p-2 rounded-full bg-black/40 text-text-primary hover:bg-black/70 backdrop-blur-sm" aria-label="Reset image">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                  </button>
+                )}
+            </div>
+          )}
+
           <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
         </div>
 

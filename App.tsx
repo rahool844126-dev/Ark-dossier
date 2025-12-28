@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import { Creature, ChatMessage, Recipe } from './types';
 import { CREATURES, RECIPES } from './constants';
 import CreatureCard from './components/CreatureCard';
@@ -9,9 +9,11 @@ import RecipesTab from './components/RecipesTab';
 import BreedingTab from './components/BreedingTab';
 import MyTamesTab from './components/MyTamesTab';
 import HomeTab from './components/HomeTab';
-import ThemeToggle from './components/ThemeToggle';
+import SettingsTab from './components/SettingsTab';
+import VersionToggle from './components/VersionToggle';
+import { useSettings } from './SettingsContext';
 
-type Tab = 'home' | 'creatures' | 'recipes' | 'breeding' | 'myTames' | 'assistant';
+type Tab = 'home' | 'creatures' | 'recipes' | 'breeding' | 'myTames' | 'settings';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -21,6 +23,26 @@ const App: React.FC = () => {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+
+  const { settings } = useSettings();
+  const { allowImageEditing } = settings;
+
+  const scrollPosition = useRef(0);
+
+  useEffect(() => {
+    const requestPersistence = async () => {
+        if (navigator.storage && navigator.storage.persist) {
+            const isPersisted = await navigator.storage.persisted();
+            if (!isPersisted) {
+                const result = await navigator.storage.persist();
+                console.log(`Storage persistence request result: ${result}`);
+            } else {
+                console.log("Storage is already persisted.");
+            }
+        }
+    };
+    requestPersistence();
+  }, []);
 
   const allCreatures = useMemo(() => {
     return CREATURES.sort((a, b) => a.name.localeCompare(b.name));
@@ -59,11 +81,27 @@ const App: React.FC = () => {
     setActiveTab(tab);
     window.scrollTo(0, 0);
   };
+  
+  const handleSelectCreature = (creature: Creature) => {
+    scrollPosition.current = window.scrollY;
+    setSelectedCreature(creature);
+  };
+
+  const handleBackFromDetail = () => {
+    setSelectedCreature(null);
+  };
+
+  useLayoutEffect(() => {
+    if (!selectedCreature) {
+      window.scrollTo(0, scrollPosition.current);
+    }
+  }, [selectedCreature]);
+
 
   const renderContent = () => {
     switch (activeTab) {
         case 'home':
-            return <HomeTab onNavigate={navigateToTab} onSelectCreature={setSelectedCreature} />;
+            return <HomeTab onNavigate={navigateToTab} onSelectCreature={handleSelectCreature} />;
         case 'creatures':
             return (
                  <>
@@ -84,7 +122,7 @@ const App: React.FC = () => {
                             <CreatureCard 
                                 key={creature.id} 
                                 creature={creature} 
-                                onClick={() => setSelectedCreature(creature)}
+                                onClick={() => handleSelectCreature(creature)}
                             />
                         ))}
                     </div>
@@ -96,65 +134,13 @@ const App: React.FC = () => {
             return <BreedingTab />;
         case 'myTames':
             return <MyTamesTab />;
-        case 'assistant':
-             return (
-                <div className="flex flex-col h-[calc(100vh-210px)]">
-                    <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar p-1 pr-2">
-                        {chatHistory.length === 0 && (
-                            <div className="bg-bg-secondary rounded-lg p-6 border border-border-color text-center">
-                                <h3 className="font-orbitron font-bold text-[var(--accent-main)] mb-2 uppercase">HLNA</h3>
-                                <p className="text-text-secondary text-sm">
-                                    Your Human-Like Neural Assistant. Ask for taming strategies, survival tips, or any ARK-related query.
-                                </p>
-                            </div>
-                        )}
-                        {chatHistory.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[85%] px-4 py-2.5 rounded-xl text-sm ${
-                                    msg.role === 'user' 
-                                    ? 'bg-[var(--accent-main)] text-bg-primary font-semibold rounded-br-none' 
-                                    : 'bg-bg-tertiary text-text-primary rounded-bl-none'
-                                }`}>
-                                    {msg.content.split('\n').map((line, i) => <p key={i} className="whitespace-pre-wrap">{line}</p>)}
-                                </div>
-                            </div>
-                        ))}
-                        {isTyping && (
-                            <div className="flex justify-start">
-                                <div className="bg-bg-tertiary text-text-primary px-4 py-2.5 rounded-xl rounded-bl-none">
-                                    <div className="flex items-center justify-center space-x-1">
-                                        <div className="w-2 h-2 bg-[var(--accent-main)] rounded-full animate-pulse [animation-delay:-0.3s]"></div>
-                                        <div className="w-2 h-2 bg-[var(--accent-main)] rounded-full animate-pulse [animation-delay:-0.15s]"></div>
-                                        <div className="w-2 h-2 bg-[var(--accent-main)] rounded-full animate-pulse"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <form onSubmit={handleSendMessage} className="mt-auto flex gap-2 pt-4">
-                        <input
-                            type="text"
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            placeholder="Message HLNA..."
-                            className="flex-1 bg-bg-secondary border-2 border-border-color rounded-lg py-3 px-4 text-sm text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 transition focus:ring-[var(--accent-main)]"
-                        />
-                        <button 
-                            type="submit"
-                            disabled={isTyping}
-                            className="bg-[var(--accent-main)] hover:opacity-80 text-bg-primary p-3 rounded-lg transition-opacity disabled:opacity-50"
-                            aria-label="Send message"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.789 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
-                        </button>
-                    </form>
-                </div>
-            );
+        case 'settings':
+             return <SettingsTab />;
     }
   }
 
   if (selectedCreature) {
-    return <CreatureDetailPage creature={selectedCreature} onBack={() => setSelectedCreature(null)} />;
+    return <CreatureDetailPage creature={selectedCreature} onBack={handleBackFromDetail} allowImageEditing={allowImageEditing} />;
   }
 
   const navItems: { tab: Tab; label: string; icon: React.ReactElement }[] = [
@@ -163,6 +149,7 @@ const App: React.FC = () => {
     {tab: 'recipes', label: 'Recipes', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h.01a1 1 0 100-2H10zm3 0a1 1 0 000 2h.01a1 1 0 100-2H13z" clipRule="evenodd" /></svg> },
     {tab: 'breeding', label: 'Breeding', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg> },
     {tab: 'myTames', label: 'My Tames', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zm-1.559 1.832a4.002 4.002 0 00-2.882 0C2.969 8.523 2 9.873 2 11.5V13a1 1 0 001 1h8a1 1 0 001-1v-1.5c0-1.627-.969-2.977-2.559-3.668zM18 6a3 3 0 11-6 0 3 3 0 016 0zM12.441 7.832a4.002 4.002 0 012.882 0C17.03 8.523 18 9.873 18 11.5V13a1 1 0 001 1h.5a1 1 0 001-1v-1.5c0-1.627-.969-2.977-2.559-3.668z" /></svg> },
+    {tab: 'settings', label: 'Settings', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
   ];
 
   return (
@@ -172,9 +159,7 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-orbitron font-black text-text-primary">
                 ARK<span className="text-[var(--accent-main)]">DOSSIER</span>
             </h1>
-            <div className="flex items-center gap-3">
-                <ThemeToggle />
-            </div>
+            <VersionToggle />
         </div>
       </header>
       

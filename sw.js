@@ -1,3 +1,4 @@
+
 const CACHE_NAME = 'ark-dossier-cache-v1';
 
 const IMAGE_URLS = [
@@ -109,7 +110,7 @@ self.addEventListener('install', (event) => {
             .then((cache) => {
                 console.log('Opened cache');
                 const promises = URLS_TO_CACHE.map(url => {
-                    return cache.add(new Request(url, { mode: 'no-cors' })).catch(err => {
+                    return cache.add(url).catch(err => {
                         console.warn(`Failed to cache ${url}:`, err);
                     });
                 });

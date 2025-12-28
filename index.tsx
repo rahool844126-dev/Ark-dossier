@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './ThemeContext';
 import { EditionProvider } from './EditionContext';
+import { SettingsProvider } from './SettingsContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,7 +16,9 @@ root.render(
   <React.StrictMode>
     <ThemeProvider>
       <EditionProvider>
-        <App />
+        <SettingsProvider>
+          <App />
+        </SettingsProvider>
       </EditionProvider>
     </ThemeProvider>
   </React.StrictMode>

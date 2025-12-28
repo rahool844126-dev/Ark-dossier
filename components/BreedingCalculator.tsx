@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Creature } from '../types';
+import { useSettings } from '../SettingsContext';
 
 interface BreedingCalculatorProps {
   creature: Creature;
@@ -18,16 +19,26 @@ type ParentStats = {
 const initialStats: ParentStats = { health: '', stamina: '', oxygen: '', food: '', weight: '', melee: '' };
 
 const formatTime = (seconds: number): string => {
+    if (seconds <= 0) return '0s';
     const d = Math.floor(seconds / (3600*24));
     const h = Math.floor(seconds % (3600*24) / 3600);
     const m = Math.floor(seconds % 3600 / 60);
     const s = Math.floor(seconds % 60);
-    return `${d > 0 ? `${d}d ` : ''}${h > 0 ? `${h}h ` : ''}${m > 0 ? `${m}m ` : ''}${s}s`;
+    
+    let parts = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0) parts.push(`${h}h`);
+    if (m > 0) parts.push(`${m}m`);
+    if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+
+    return parts.join(' ');
 }
 
 const BreedingCalculator: React.FC<BreedingCalculatorProps> = ({ creature }) => {
   const [maleStats, setMaleStats] = useState<ParentStats>(initialStats);
   const [femaleStats, setFemaleStats] = useState<ParentStats>(initialStats);
+  const { settings } = useSettings();
+  const { maturation, incubation } = settings.serverRates;
 
   const handleMaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMaleStats({ ...maleStats, [e.target.name]: e.target.value });
@@ -57,7 +68,7 @@ const BreedingCalculator: React.FC<BreedingCalculatorProps> = ({ creature }) => 
 
   return (
     <div className="bg-bg-secondary p-4 rounded-lg border border-border-color space-y-4">
-      <h4 className="font-orbitron font-bold text-lg text-[var(--accent-ultimate)]">Breeding Calculator</h4>
+      <h4 className="font-orbitron font-bold text-lg text-[var(--accent-main)]">Breeding Calculator</h4>
       <p className="text-xs text-text-secondary -mt-3">Enter the base (post-tame, pre-leveling) stats of the parents.</p>
       
       <div className="grid grid-cols-2 gap-4">
@@ -96,7 +107,7 @@ const BreedingCalculator: React.FC<BreedingCalculatorProps> = ({ creature }) => 
       
       {/* Results */}
       <div className="pt-4 border-t border-border-color space-y-2">
-        <h4 className="font-orbitron font-bold text-lg text-[var(--accent-ultimate)]">Potential Offspring Stats</h4>
+        <h4 className="font-orbitron font-bold text-lg text-[var(--accent-main)]">Potential Offspring Stats</h4>
         <p className="text-xs text-text-secondary -mt-3">There is a 55% chance for the baby to inherit the higher stat.</p>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm pt-2">
           {statFields.map(stat => (
@@ -115,15 +126,22 @@ const BreedingCalculator: React.FC<BreedingCalculatorProps> = ({ creature }) => 
       {/* Breeding Timers */}
       {creature.breeding && (
         <div className="pt-4 border-t border-border-color space-y-2">
-            <h4 className="font-orbitron font-bold text-lg text-[var(--accent-ultimate)]">Breeding Timers</h4>
+            <div className="flex justify-between items-center">
+                <h4 className="font-orbitron font-bold text-lg text-[var(--accent-main)]">Breeding Timers</h4>
+                <div className="text-xs font-mono text-text-secondary">
+                    <span>Inc: <span className="text-text-primary">x{incubation}</span></span>
+                    <span className="mx-1">/</span>
+                    <span>Mat: <span className="text-text-primary">x{maturation}</span></span>
+                </div>
+            </div>
             <div className="space-y-1 text-sm">
                 {creature.breeding.incubationTime && (
-                    <div className="flex justify-between"><span className="text-text-secondary">Incubation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.incubationTime)}</span></div>
+                    <div className="flex justify-between"><span className="text-text-secondary">Incubation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.incubationTime / incubation)}</span></div>
                 )}
                 {creature.breeding.gestationTime && (
-                    <div className="flex justify-between"><span className="text-text-secondary">Gestation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.gestationTime)}</span></div>
+                    <div className="flex justify-between"><span className="text-text-secondary">Gestation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.gestationTime / incubation)}</span></div>
                 )}
-                <div className="flex justify-between"><span className="text-text-secondary">Total Maturation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.maturationTime)}</span></div>
+                <div className="flex justify-between"><span className="text-text-secondary">Total Maturation:</span><span className="font-mono text-text-primary">{formatTime(creature.breeding.maturationTime / maturation)}</span></div>
             </div>
         </div>
       )}

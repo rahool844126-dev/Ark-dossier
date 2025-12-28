@@ -1,7 +1,6 @@
 
 import { TamedCreature } from '../types';
-
-const TAMES_STORAGE_KEY = 'my_tamed_creatures';
+import { initDB, STORES, clearStore } from './db';
 
 // A simple UUID generator
 const generateUUID = () => {
@@ -11,41 +10,68 @@ const generateUUID = () => {
   });
 }
 
-export const getTames = (): TamedCreature[] => {
+export const getTames = async (): Promise<TamedCreature[]> => {
   try {
-    const tamesJson = localStorage.getItem(TAMES_STORAGE_KEY);
-    return tamesJson ? JSON.parse(tamesJson) : [];
+    const db = await initDB();
+    const transaction = db.transaction(STORES.TAMES, 'readonly');
+    const store = transaction.objectStore(STORES.TAMES);
+    const request = store.getAll();
+    return new Promise((resolve, reject) => {
+        request.onerror = () => {
+          console.error("Failed to get tames from IndexedDB", request.error);
+          reject(request.error)
+        };
+        request.onsuccess = () => resolve(request.result);
+    });
   } catch (error) {
-    console.error("Failed to retrieve tames from localStorage", error);
+    console.error("Failed to open DB for getTames", error);
     return [];
   }
 };
 
-export const saveTames = (tames: TamedCreature[]) => {
-  try {
-    localStorage.setItem(TAMES_STORAGE_KEY, JSON.stringify(tames));
-  } catch (error) {
-    console.error("Failed to save tames to localStorage", error);
-  }
-};
-
-export const addTame = (newTame: Omit<TamedCreature, 'id'>): TamedCreature => {
-  const tames = getTames();
+export const addTame = async (newTame: Omit<TamedCreature, 'id'>): Promise<TamedCreature> => {
   const tameWithId = { ...newTame, id: generateUUID() };
-  saveTames([...tames, tameWithId]);
-  return tameWithId;
+  const db = await initDB();
+  const transaction = db.transaction(STORES.TAMES, 'readwrite');
+  const store = transaction.objectStore(STORES.TAMES);
+  const request = store.add(tameWithId);
+  return new Promise((resolve, reject) => {
+      request.onerror = () => {
+        console.error("Failed to add tame to IndexedDB", request.error);
+        reject(request.error)
+      };
+      request.onsuccess = () => resolve(tameWithId);
+  });
 };
 
-export const updateTame = (updatedTame: TamedCreature): TamedCreature[] => {
-  const tames = getTames();
-  const updatedTames = tames.map(tame => tame.id === updatedTame.id ? updatedTame : tame);
-  saveTames(updatedTames);
-  return updatedTames;
+export const updateTame = async (updatedTame: TamedCreature): Promise<TamedCreature> => {
+  const db = await initDB();
+  const transaction = db.transaction(STORES.TAMES, 'readwrite');
+  const store = transaction.objectStore(STORES.TAMES);
+  const request = store.put(updatedTame);
+  return new Promise((resolve, reject) => {
+      request.onerror = () => {
+        console.error("Failed to update tame in IndexedDB", request.error);
+        reject(request.error)
+      };
+      request.onsuccess = () => resolve(updatedTame);
+  });
 };
 
-export const removeTame = (tameId: string): TamedCreature[] => {
-  const tames = getTames();
-  const filteredTames = tames.filter(tame => tame.id !== tameId);
-  saveTames(filteredTames);
-  return filteredTames;
+export const removeTame = async (tameId: string): Promise<void> => {
+  const db = await initDB();
+  const transaction = db.transaction(STORES.TAMES, 'readwrite');
+  const store = transaction.objectStore(STORES.TAMES);
+  const request = store.delete(tameId);
+   return new Promise<void>((resolve, reject) => {
+      request.onerror = () => {
+        console.error("Failed to remove tame from IndexedDB", request.error);
+        reject(request.error)
+      };
+      request.onsuccess = () => resolve();
+  });
+};
+
+export const clearAllTames = (): Promise<void> => {
+    return clearStore(STORES.TAMES);
 };

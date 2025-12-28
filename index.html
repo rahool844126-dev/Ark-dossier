@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK Holo-Dossier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#050608">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root, [data-theme='dark'] {
+            --bg-primary: #050608;
+            --bg-secondary: #111317;
+            --bg-tertiary: #1a1d23;
+            --border-color: #2a2f38;
+            --text-primary: #e0e1e6;
+            --text-secondary: #7b8190;
+            --accent-mobile: #ff6f00; /* Vibrant Orange */
+            --accent-ultimate: #00d1ff; /* Electric Cyan */
+            --accent-positive: #00ff89; /* Green */
+            --accent-negative: #ff386b; /* Red */
+            --bg-gradient-start: rgba(17, 19, 23, 0.95);
+            --accent-main: var(--accent-ultimate);
+        }
+
+        [data-edition='mobile'] {
+            --accent-main: var(--accent-mobile);
+        }
+        [data-edition='ultimate'] {
+            --accent-main: var(--accent-ultimate);
+        }
+
+        [data-theme='light'] {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #e5e7eb;
+            --border-color: #d1d5db;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --bg-gradient-start: rgba(209, 213, 219, 0.95);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            background-image:
+                linear-gradient(var(--bg-gradient-start), var(--bg-primary) 50%),
+                radial-gradient(var(--border-color) 0.5px, transparent 0.5px),
+                radial-gradient(var(--border-color) 0.5px, var(--bg-primary) 0.5px);
+            background-size: 100% 100%, 20px 20px, 20px 20px;
+            background-position: 0 0, 0 0, 10px 10px;
+            background-attachment: fixed;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('SW registered: ', registration);
+                }).catch(registrationError => {
+                    console.log('SW registration failed: ', registrationError);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

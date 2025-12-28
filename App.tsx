@@ -10,7 +10,6 @@ import BreedingTab from './components/BreedingTab';
 import MyTamesTab from './components/MyTamesTab';
 import HomeTab from './components/HomeTab';
 import SettingsTab from './components/SettingsTab';
-import VersionToggle from './components/VersionToggle';
 import { useSettings } from './SettingsContext';
 
 type Tab = 'home' | 'creatures' | 'recipes' | 'breeding' | 'myTames' | 'settings';
@@ -159,7 +158,6 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-orbitron font-black text-text-primary">
                 ARK<span className="text-[var(--accent-main)]">DOSSIER</span>
             </h1>
-            <VersionToggle />
         </div>
       </header>
       

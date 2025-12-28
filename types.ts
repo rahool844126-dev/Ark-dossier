@@ -1,10 +1,4 @@
 
-// Defines the game edition, mobile or ultimate.
-export enum ArkEdition {
-  ULTIMATE = 'ultimate',
-  MOBILE = 'mobile',
-}
-
 export interface Creature {
   id: string;
   name: string;
